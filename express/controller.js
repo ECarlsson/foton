@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { param } = require('express-validator/check');
+const { param, validationResult } = require('express-validator');
 const { promisify } = require('util');
 
 const readdir = promisify(fs.readdir);
@@ -34,7 +34,7 @@ function checkMetaKeys(keys, json) {
 
 // Returns JSON containing list of all albums and album meta
 exports.albumList = (async (req, res) => {
-  var files = [];
+  let files = [];
   try {
     files = await readdir(filespath, { withFileTypes: true });
   } catch (err) {
@@ -50,7 +50,7 @@ exports.albumList = (async (req, res) => {
   // Returns array of promises that are resolved async
   const promises = albums.map(async album => {
     try {
-      var json = await readMetaFile(album);
+      let json = await readMetaFile(album);
       checkMetaKeys(['name', 'date', 'thumbnail'], json);
       json.id = album;
       return json;
@@ -75,9 +75,16 @@ exports.albumList = (async (req, res) => {
 
 // Returns JSON containing album meta and list of images
 exports.albumDetail = (async (req, res) => {
+  
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+      console.error(errors.array());
+      return res.status(500).send();
+  }
+
   const album = req.params.id;
-  var files = [];
-  var meta = {};
+  let files = [];
+  let meta = {};
   try {
       files = await readdir(path.join(filespath, album), { withFileTypes: true });
   } catch (err) {
@@ -95,7 +102,7 @@ exports.albumDetail = (async (req, res) => {
   }
   
   const imageFiles = files.filter(file => extensions.includes(path.extname(file.name)));
-  var response = meta;
+  let response = meta;
   response.images = imageFiles.map(image => image.name);
   return res.json(response);
 });
